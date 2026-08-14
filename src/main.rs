@@ -24,12 +24,11 @@ static OCR: OnceLock<Ddddocr> = OnceLock::new();
 static CACHE: LazyLock<Mutex<LruCache<String, Vec<String>>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(NonZero::new(64).unwrap())));
 
+/// 固定监听地址。
+const LISTEN_ADDR: &str = "0.0.0.0:8000";
+
 #[derive(Parser, Debug, Clone)]
 struct Args {
-    /// 监听地址。
-    #[arg(long, default_value_t = { "0.0.0.0:8000".to_string() })]
-    address: String,
-
     /// 关闭 OCR（默认开启）。
     #[arg(long, default_value_t = false)]
     no_ocr: bool,
@@ -248,18 +247,18 @@ async fn main() {
     router = router.catcher(Catcher::default().hoop(default_error_handler));
 
     let acceptor = if let Some(domain) = &args.acme {
-        TcpListener::new(&args.address)
+        TcpListener::new(LISTEN_ADDR)
             .acme()
             .cache_path("temp/letsencrypt")
             .add_domain(domain)
-            .quinn(&args.address)
+            .quinn(LISTEN_ADDR)
             .bind()
             .await
     } else {
-        TcpListener::new(&args.address).bind().await
+        TcpListener::new(LISTEN_ADDR).bind().await
     };
 
-    info!("listening on http://{}", args.address);
+    info!("listening on http://{}", LISTEN_ADDR);
     Server::new(acceptor).serve(router).await;
 }
 

@@ -1,94 +1,41 @@
-name: build
-
-permissions:
-  contents: write
+name: ci
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version (e.g. v1.2.3)'
-        required: true
-        default: ''
-      description:
-        description: 'Release description'
-        required: false
-        default: ''
-      publish:
-        description: '是否创建 GitHub Release?'
-        required: false
-        default: 'false'
-        type: boolean
   push:
-    branches: [master]
   pull_request:
-    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build-linux-x64:
+  build-x86_64-linux:
+    name: build (x86_64-unknown-linux-gnu)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-gnu
-      - name: Build OCR-only (x86_64 Linux, inline-model)
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: x86_64-unknown-linux-gnu
+
+      - name: Build release (OCR-only, inline-model)
         run: cargo build --release --target x86_64-unknown-linux-gnu
-      - name: Zip artifact
+
+      - name: Package binary
         run: |
           cd ./target/x86_64-unknown-linux-gnu/release
-          zip -r ../../../x86_64-unknown-linux-gnu-inline.zip ddddocr
+          zip -r ../../../ddddocr-x86_64-unknown-linux-gnu.zip ddddocr
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: x86_64-unknown-linux-gnu-inline
-          path: ./x86_64-unknown-linux-gnu-inline.zip
-
-  build-linux-x64-external-model:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-gnu
-      - name: Build OCR-only (x86_64 Linux, external model)
-        run: cargo build --release --target x86_64-unknown-linux-gnu --no-default-features --features "download-binaries"
-      - name: Package with model
-        run: |
-          cp -r ./model ./target/x86_64-unknown-linux-gnu/release/
-          cd ./target/x86_64-unknown-linux-gnu/release
-          zip -r ../../../x86_64-unknown-linux-gnu.zip ddddocr model
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: x86_64-unknown-linux-gnu
-          path: ./x86_64-unknown-linux-gnu.zip
-
-  release:
-    permissions:
-      contents: write
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true' }}
-    needs:
-      - build-linux-x64
-      - build-linux-x64-external-model
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts/
-          merge-multiple: true
-      - name: Create Release and upload
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.version }}
-          name: ${{ github.event.inputs.version }}
-          body: ${{ github.event.inputs.description }}
-          files: artifacts/*
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ddddocr-x86_64-unknown-linux-gnu
+          path: ./ddddocr-x86_64-unknown-linux-gnu.zip
+          if-no-files-found: error

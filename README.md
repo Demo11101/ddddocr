@@ -4,10 +4,10 @@
 
 ## 变更
 
-- **仅适配 x86_64 Linux** 构建与发布
+- **仅适配 x86_64 Linux**；监听地址硬编码为 `0.0.0.0:8000`
 - **移除** MCP、`old` 旧模型、`slide` 滑块、`det` 目标检测
 - **默认开启 OCR**（可用 `--no-ocr` 关闭，关闭后进程直接退出）
-- GitHub Actions：`.github/workflows/build.yml` 仅编译 `x86_64-unknown-linux-gnu`
+- GitHub Actions CI：任意 push / PR 自动编译 `x86_64-unknown-linux-gnu`
 
 ## 本地编译（Linux x86_64）
 
@@ -23,8 +23,8 @@ cargo build --release --target x86_64-unknown-linux-gnu \
 ## 运行
 
 ```bash
-./ddddocr --address 0.0.0.0:8000
-# OCR 默认开启；Swagger: /swagger-ui
+./ddddocr
+# 固定监听 http://0.0.0.0:8000 ；Swagger: /swagger-ui
 ```
 
 ## API
@@ -38,5 +38,4 @@ cargo build --release --target x86_64-unknown-linux-gnu \
 
 ## GitHub Actions
 
-- `push` / `pull_request` → 自动构建并上传 artifact  
-- `workflow_dispatch` 且 `publish=true` → 创建 Release 并挂载 zip
+任意 `push` / `pull_request` / 手动 `workflow_dispatch` 触发 CI，仅构建并上传 `x86_64-unknown-linux-gnu` artifact。
