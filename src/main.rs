@@ -244,22 +244,28 @@ async fn main() {
         .unshift(doc.into_router("/api-doc/openapi.json"))
         .unshift(SwaggerUi::new("/api-doc/openapi.json").into_router("/swagger-ui"));
 
-    router = router.catcher(Catcher::default().hoop(default_error_handler));
+    let service = Service::new(router).catcher(Catcher::default().hoop(default_error_handler));
 
-    let acceptor = if let Some(domain) = &args.acme {
-        TcpListener::new(LISTEN_ADDR)
-            .acme()
-            .cache_path("temp/letsencrypt")
-            .add_domain(domain)
-            .quinn(LISTEN_ADDR)
-            .bind()
-            .await
+    // 允许较大的 base64 图片 body
+    salvo::http::request::set_global_secure_max_size(50 * 1024 * 1024);
+
+    let listener = TcpListener::new(LISTEN_ADDR);
+    if let Some(domain) = &args.acme {
+        info!("listening on https://{} (acme domain={})", LISTEN_ADDR, domain);
+        Server::new(
+            listener
+                .acme()
+                .cache_path("temp/letsencrypt")
+                .add_domain(domain)
+                .bind()
+                .await,
+        )
+        .serve(service)
+        .await;
     } else {
-        TcpListener::new(LISTEN_ADDR).bind().await
-    };
-
-    info!("listening on http://{}", LISTEN_ADDR);
-    Server::new(acceptor).serve(router).await;
+        info!("listening on http://{}", LISTEN_ADDR);
+        Server::new(listener.bind().await).serve(service).await;
+    }
 }
 
 fn ocr_charset_range(args: &Args) -> Option<CharsetRange> {

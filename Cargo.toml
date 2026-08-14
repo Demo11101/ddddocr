@@ -5,9 +5,10 @@ edition = "2021"
 description = "ddddocr OCR-only fork (x86_64 Linux)"
 
 [features]
+# 默认内联嵌入 common.onnx / common.json
 default = ["inline-model", "download-binaries"]
 
-# 编译时是否内联 OCR 模型
+# 编译时是否内联 OCR 模型（开启后二进制无需外置 model/）
 inline-model = []
 
 # cuda 支持
