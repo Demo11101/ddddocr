@@ -2,6 +2,9 @@
 name = "ddddocr"
 version = "1.0.0"
 edition = "2021"
+# Railway/Nixpacks default overlay may ship old Cargo (e.g. 1.84);
+# pin MSRV so providers pick a toolchain that can parse modern crates.
+rust-version = "1.88"
 description = "ddddocr OCR-only fork (x86_64 Linux)"
 
 [features]
@@ -28,6 +31,9 @@ ort = { git = "https://github.com/86maid/ort.git", default-features = false, fea
   "copy-dylibs",
 ] }
 ndarray = "0.15"
+
+# time >=0.3.46 uses edition2024 / MSRV 1.88; pin so old Cargo never fetches 0.3.55+.
+time = "=0.3.41"
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

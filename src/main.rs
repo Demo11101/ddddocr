@@ -24,8 +24,15 @@ static OCR: OnceLock<Ddddocr> = OnceLock::new();
 static CACHE: LazyLock<Mutex<LruCache<String, Vec<String>>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(NonZero::new(64).unwrap())));
 
-/// 固定监听地址。
-const LISTEN_ADDR: &str = "0.0.0.0:8000";
+/// 默认监听地址；Railway 等平台若设置 `PORT` 则优先用 `0.0.0.0:$PORT`。
+const DEFAULT_LISTEN_ADDR: &str = "0.0.0.0:8000";
+
+fn listen_addr() -> String {
+    match std::env::var("PORT") {
+        Ok(port) if !port.is_empty() => format!("0.0.0.0:{}", port),
+        _ => DEFAULT_LISTEN_ADDR.to_string(),
+    }
+}
 
 #[derive(Parser, Debug, Clone)]
 struct Args {
@@ -249,9 +256,10 @@ async fn main() {
     // 允许较大的 base64 图片 body
     salvo::http::request::set_global_secure_max_size(50 * 1024 * 1024);
 
-    let listener = TcpListener::new(LISTEN_ADDR);
+    let addr = listen_addr();
+    let listener = TcpListener::new(addr.as_str());
     if let Some(domain) = &args.acme {
-        info!("listening on https://{} (acme domain={})", LISTEN_ADDR, domain);
+        info!("listening on https://{} (acme domain={})", addr, domain);
         Server::new(
             listener
                 .acme()
@@ -263,7 +271,7 @@ async fn main() {
         .serve(service)
         .await;
     } else {
-        info!("listening on http://{}", LISTEN_ADDR);
+        info!("listening on http://{}", addr);
         Server::new(listener.bind().await).serve(service).await;
     }
 }
