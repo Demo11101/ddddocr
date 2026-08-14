@@ -1,1 +1,1 @@
-Slim to OCR-only for x86_64 Linux; default-enable OCR; simplify GitHub Actions.
+﻿Remove accidental commit-msg.txt from tree.
