@@ -24,14 +24,15 @@ static OCR: OnceLock<Ddddocr> = OnceLock::new();
 static CACHE: LazyLock<Mutex<LruCache<String, Vec<String>>>> =
     LazyLock::new(|| Mutex::new(LruCache::new(NonZero::new(64).unwrap())));
 
-/// 默认监听地址；Railway 等平台若设置 `PORT` 则优先用 `0.0.0.0:$PORT`。
-const DEFAULT_LISTEN_ADDR: &str = "0.0.0.0:8000";
-
-fn listen_addr() -> String {
-    match std::env::var("PORT") {
+/// 默认监听地址；Railway 若设置 `PORT` 则用 `0.0.0.0:$PORT`。
+/// Salvo `TcpListener::new` 需要 `'static` 地址字符串。
+fn listen_addr() -> &'static str {
+    static ADDR: OnceLock<String> = OnceLock::new();
+    ADDR.get_or_init(|| match std::env::var("PORT") {
         Ok(port) if !port.is_empty() => format!("0.0.0.0:{}", port),
-        _ => DEFAULT_LISTEN_ADDR.to_string(),
-    }
+        _ => "0.0.0.0:8000".to_string(),
+    })
+    .as_str()
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -257,7 +258,7 @@ async fn main() {
     salvo::http::request::set_global_secure_max_size(50 * 1024 * 1024);
 
     let addr = listen_addr();
-    let listener = TcpListener::new(addr.as_str());
+    let listener = TcpListener::new(addr);
     if let Some(domain) = &args.acme {
         info!("listening on https://{} (acme domain={})", addr, domain);
         Server::new(
